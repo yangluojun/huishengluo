@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" >
+
+<title>基座大模型对齐阶段的方法和技术-数据篇 | huisheng&#39; Log</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+<link rel="shortcut icon" href="https://yangluojun.github.io/favicon.ico?v=1725462284667">
+<link rel="stylesheet" href="https://yangluojun.github.io/styles/main.css">
+
+
+
+<link rel="stylesheet" href="https://unpkg.com/aos@next/dist/aos.css" />
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+
+
+
+    <meta name="description" content="1. 对齐数据准备
+1.1. sft数据量
+
+
+
+模型
+数量
+备注
+
+
+
+
+InstructGPT
+13k
+13k for sft31k for ppo
+
+
+Baichuan2
+100k
+-
+
+
+Llama2
+&lt;=27k
+-
+
+
+YI..." />
+    <meta name="keywords" content="" />
+  </head>
+  <body>
+    <div id="app" class="main">
+
+      <div class="sidebar" :class="{ 'full-height': menuVisible }">
+  <div class="top-container" data-aos="fade-right">
+    <div class="top-header-container">
+      <a class="site-title-container" href="https://yangluojun.github.io">
+        <img src="https://yangluojun.github.io/images/avatar.png?v=1725462284667" class="site-logo">
+        <h1 class="site-title">huisheng&#39; Log</h1>
+      </a>
+      <div class="menu-btn" @click="menuVisible = !menuVisible">
+        <div class="line"></div>
+      </div>
+    </div>
+    <div>
+      
+        
+          <a href="/" class="site-nav">
+            首页
+          </a>
+        
+      
+        
+          <a href="/archives" class="site-nav">
+            归档
+          </a>
+        
+      
+        
+          <a href="/tags" class="site-nav">
+            标签
+          </a>
+        
+      
+        
+          <a href="https://yangluojun.github.io" class="site-nav">
+            关于
+          </a>
+        
+      
+    </div>
+  </div>
+  <div class="bottom-container" data-aos="flip-up" data-aos-offset="0">
+    <div class="social-container">
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    </div>
+    <div class="site-description">
+      书写是为了更好地思考
+    </div>
+    <div class="site-footer">
+       | <a class="rss" href="https://yangluojun.github.io/atom.xml" target="_blank">RSS</a>
+    </div>
+  </div>
+</div>
+
+
+      <div class="main-container">
+        <div class="content-container" data-aos="fade-up">
+          <div class="post-detail">
+            <h2 class="post-title">基座大模型对齐阶段的方法和技术-数据篇</h2>
+            <div class="post-date">2024-08-25</div>
+            
+            <div class="post-content" v-pre>
+              <h1 id="1-对齐数据准备">1. 对齐数据准备</h1>
+<h2 id="11-sft数据量">1.1. sft数据量</h2>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>数量</th>
+<th>备注</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>InstructGPT</td>
+<td>13k</td>
+<td>13k for sft31k for ppo</td>
+</tr>
+<tr>
+<td>Baichuan2</td>
+<td>100k</td>
+<td>-</td>
+</tr>
+<tr>
+<td>Llama2</td>
+<td>&lt;=27k</td>
+<td>-</td>
+</tr>
+<tr>
+<td>YI</td>
+<td>&lt;10K</td>
+<td>-</td>
+</tr>
+<tr>
+<td>DeepSeek-V2</td>
+<td>1.5M</td>
+<td>1.2M for helpfulness0.3M for safety</td>
+</tr>
+<tr>
+<td>Qwen2</td>
+<td>&gt;500K</td>
+<td>-</td>
+</tr>
+<tr>
+<td>Nemotron</td>
+<td></td>
+<td>10k for preference fine-tuning</td>
+</tr>
+<tr>
+<td>Llama 3.1</td>
+<td>&gt;18M ?</td>
+<td>2.7M code data / 14.89%</td>
+</tr>
+</tbody>
+</table>
+<p><strong>LIMA: Less Is More for Alignment</strong> 展示了在llama 65B上仅使用1000个精心制作的sft样例，对GPT4的胜和率达到43%（18%win）。LIMA想借此证明Superficial Alignment Hypothesis（表面对齐假设），即模型的知识和能力都是在预训练阶段学会的，而对齐只是教会模型在和用户交互时应该使用哪种格式分布，即对齐很大程度上是关于学习风格的。同时，作者也发现LIMA相比经过更多训练的模型输出表现不鲁棒，在对抗性提示与在前文采样一个坏token情况下，模型会得到比较差的结果。</p>
+<p><strong>YI &amp; Llama2</strong> 认为Quality Is All You Need，它们均发现使用更少的高质量数据集（k级别）训练比百万级别的第三方数据集的效果更好，因此YI和Llama2分别采用了少于10K和少于27k的人工精标的数据集进行sft。</p>
+<p><strong>DeepSeekV2</strong> 也对sft数据量进行了探究，发现当使用少于10k的数据sft时，模型在IFEval benchmark上的表现显著下降，即减弱了模型指令遵循的能力。可能的一个解释是LLM需要一定数量的数据来发展特定的技能，虽然必要的数据量会随着模型大小的增加而减少，但还是不能完全消除，模型需要足够的数据来装备所需具备的能力。</p>
+<p><strong>Data Composition</strong> 研究了不同能力项的数据规模对模型性能产生的影响。它使用不同数量的数学、代码和通用能力的数据进行sft测试，发现当通用数据达到1k条后，通用能力涌现了出来，然后随数据量增加呈log-linear增长，但数学能力和代码能力则几乎呈现线性增长。三种能力的全量数据量分别为11k，2k，8.6k。<br>
+<img src="https://yangluojun.github.io/post-images/1725461814062.png" alt="" loading="lazy"></p>
+<center>The scaling curve of different sizes of LLaMA in three individual domains.</center>
+<p><s>Quality is All You Need</s> 除了数据质量，数量也是必需的，至少10k是不够的.</p>
+<h2 id="12-对齐数据管理">1.2. 对齐数据管理</h2>
+<h3 id="121-reward-model">1.2.1. Reward Model</h3>
+<p>Reward model在对齐训练中扮演至关重要的角色，分别有以下三方面的作用：</p>
+<ol>
+<li>reward model为偏好训练阶段生成数据集</li>
+<li>reward model用于控制合成数据的质量</li>
+<li>reward model结合拒绝采样在对齐训练中提升模型效果</li>
+</ol>
+<p><strong>Nemotron</strong> 在Nemotron-4-340B-Base上使用 HelpSteer2数据集（10k人类偏好数据）训练得到Nemotron-4-340B-Reward，不同于之前InstructGPT和Llama2使用的分类模型，Nemotron将RM建模为多属性回归模型，回归模型即直接预测样本的分数。这种方式更有助于从不相关的人为因素中提取出真正的帮助性，以及为具有细微差别的相似回答提供细粒度的奖励。多属性指的是帮助性、正确性、连贯性、复杂度和冗余度五种属性。Nemotron-4-340B-Reward在RewardBench上综合分数排名第一。</p>
+<p><strong>Llama3.1</strong> 仍使用同Llama2一样的分类模型，但由于观察到数据scale后response margin的增益逐渐减少，因此从loss中移除了margin项。除了chosen和rejected，Llama3.1还添加了一项edited，表示chosen response进一步优化后的结果（edited &gt;chosen&gt;rejected）。同时，训练时RM的输入是prompt和多个response shuffle后拼接的结果，即[prompt+response1+response2+response3]，而非[prompt+response1, prompt+response1, prompt+response1，实验证明前者在提高计算的效率情况下没有降低准确率。</p>
+<h3 id="122-数据合成">1.2.2. 数据合成</h3>
+<p>随着模型性能不断提升，现存开源的指令数据集已经不能满足模型继续进一步对齐的要求，而使用人类标注则面临耗时与成本较高的问题。除此之外，对需要专业知识和耐心标注的数据进行大规模高质量的标注是非常困难的。因此，自动数据合成也就成为了近期训练基座大模型的必备方法。Nemotron用于对齐的数据中超过98%的比例是合成的数据，Llama3.1和Qwen2也大量使用合成数据。</p>
+<h4 id="1221-llama31">1.2.2.1. Llama3.1</h4>
+<figure data-type="image" tabindex="1"><img src="https://yangluojun.github.io/post-images/1725462089430.png" alt="" loading="lazy"></figure>
+<p>Llama3.1的对齐训练流程：</p>
+<ol>
+<li>
+<p>在pretrain model上使用标注好的的偏好数据训练reward model</p>
+</li>
+<li>
+<p>在pretrain model上使用收集的sft数据和偏好数据训练Instruct model</p>
+</li>
+<li>
+<p>重复以下步骤：</p>
+</li>
+<li>
+<p>对每个收集的prompt，使用上一轮得到的Instruct model（或效果最好的特定能力的模型）生成K（10-30）个回答，应用上一轮训练得到的reward model执行拒绝采样，分数最高的回答加进下一轮sft数据中；</p>
+</li>
+<li>
+<p>对每个收集的prompt，使用两个不同数据比例或对齐策略训练的模型各生成一个回复，然后进行偏好数据的标注，分别标注显著好于、好于、稍好于、略微好于四个等级，然后仅使用显著好于和好于等级的数据进行reward model与dpo训练。其中reward model的训练使用当前所有的偏好数据训练，而dpo仅使用本轮标注的偏好数据。</p>
+</li>
+</ol>
+<h4 id="1222-nemotron">1.2.2.2. Nemotron</h4>
+<p>Nemotron合成数据流程：</p>
+<ol>
+<li>
+<p>prompt合成</p>
+</li>
+<li>
+<p>合成单轮数据：使用Mixtral-8x7B-Instruct-v0.1作为prompt生成器，通过输入不同主题和关键词控制prompts的分布，达到在任务、主题和指令类型三个维度上的多样性。<br>
+<img src="https://yangluojun.github.io/post-images/1725462102486.png" alt="" loading="lazy"></p>
+</li>
+<li>
+<p>合成指令遵循prompt：对每个单轮数据的prompt，拼接上随机生成的可验证的指令模板，如“回答应该为三段”。Nemotron也构建了多轮的指令遵循数据，通过添加对之前response修改的指令实现。</p>
+</li>
+<li>
+<p>为了更好地模拟真实用户的需求，Nemotron也从LMSYS-CHAT-1M数据集中采样，以一定比例与合成数据混合。</p>
+</li>
+<li>
+<p>sft response合成</p>
+</li>
+</ol>
+<p>迭代式角色扮演地prompt一个instruct model进行回答生成，问答轮次为3轮，为了在用户轮次采样出不同的行为，Nemotron每次回答会在历史对话后面附加不同的角色人格。同时为了更好地模拟用户行为，会将模型模拟用户生成的过于礼貌的用语删除（如谢谢...，很高兴...）。Nemotron使用Nemotron-4-340B-Reward为生成的结果打分，低于设定阈值的数据将被丢弃。</p>
+<ol start="3">
+<li>偏好数据response合成与评价</li>
+</ol>
+<p>对一个prompt，使用多个不同的模型中间版本进行回答生成。由于大多数prompt没有客观答案，在偏好数据迭代早期，使用LLM with consistent的方式进行回答的评价，由于Reward-Model-as-Judge形式在困难样本上表现更优，后期使用Nemotron-4-340B-Reward进行结果评价。</p>
+<p><img src="https://yangluojun.github.io/post-images/1725462111023.png" alt="" loading="lazy"><br>
+Nemotron对齐训练流程：</p>
+<ol>
+<li>
+<p>使用Instruct mode（Mixtral-8x7B-Instruct-v0.1）进行对话数据和偏好数据的合成</p>
+</li>
+<li>
+<p>重复以下流程：</p>
+</li>
+<li>
+<p>使用最新合成的对话数据和偏好数据训练340B-Interm-n-Base得到340B-Interm-n-Instruct（对齐训练流程和预训练流程同步进行）</p>
+</li>
+<li>
+<p>使用最新的Instruct model进行回答的生成</p>
+</li>
+<li>
+<p>使用Reward model进行拒绝采样得到对话数据和偏好数据</p>
+</li>
+</ol>
+<p>Nemotron迭代对齐训练流程创造了一个自我强化的飞轮效应，由以下两点保证：</p>
+<ol>
+<li>在相同的数据集下，更强的base model产生更强的Instruct model</li>
+<li>相同的base model上，质量更高的数据集产生更强的Instruct model</li>
+</ol>
+<h3 id="123-特殊指令数据构造">1.2.3. 特殊指令数据构造</h3>
+<p><strong>WizardLM</strong>介绍了一种指令构造方法-Evol-Instruct，使用指令演进的思路，LLM能够构造不同复杂度的指令数据。具体来说，从一个简单指令出发，经过随机抽取深度进化或广度进化操作实现指令的复杂化。其中深度进化包含增加约束、内容深化、具体化、增加推理步骤和复杂化输入等算子，广度进化主要是突变，根据给定指令生成完全不一样的指令。这些算子都通过LLM使用不同的prompts来实现，重复以上进化步骤得到不同复杂度的指令，除此之外也引入指令擦除器过滤掉不正确的指令。实验使用70kEvol-*Instruct构造的数据finetune Llama7B，效果优于同等量级ShareGPT训练的模型。<strong>YI参考WizardLM指令演进的思路进行复杂数据的生成。</strong><br>
+<img src="https://yangluojun.github.io/post-images/1725462120117.png" alt="" loading="lazy"></p>
+<p><strong>Step-Back</strong>是一种简单的promting方法（先抽象后推理）。它引导LLM从实例中抽取更高层级的概念和第一性原理，然后通过利用这些概念和原理，LLM能够生成到达正确答案的推理路径，从而提升表现。<strong>YI使用Step-Back方法来构造包含COT的数据。</strong></p>
+<h3 id="124-数据选择">1.2.4. 数据选择</h3>
+<p><strong>InsTag</strong> 描述了一种为开放域指令数据集自动抽取标签的方法，该方法主要利用llm来抽取指令的标签，同时在质量控制上应用了词频过滤、语义聚合、关联聚合等方法确保标注质量。InsTag对指令集的多样性和复杂度做了更进一步的分析和研究，将多样性定义为标签数量占总标签数量的比例（标签数），复杂度定义为平均指令标签数。通过消融实验分别探索了标签复杂度和标签多样性对模型效果的影响，如下图所示，使用更具多样性和复杂度的对齐数据训练后，llm的表现越好。<strong>YI、Qwen2、Llama3.1均使用了InsTag进行对齐数据管理，Qwen2使用InsTag进行指令多样性的评估，Llama3.1使用InsTag进行复杂度的评估。</strong><br>
+<img src="https://yangluojun.github.io/post-images/1725462138123.png" alt="" loading="lazy"></p>
+<p><strong>DEITA</strong> 从复杂度、数据质量和多样性三个维度探索对齐数据对训练效果的影响。</p>
+<ul>
+<li>复杂度维度上，DEITA通过实验考察了包括指令长度、困惑度、GPT直接打分、Instruction Node、Instag complexity和IFD在内的几种度量方法的效果，并提出基于复杂度演进（WizardLM）数据的度量方法。具体而言，在得到不同复杂度的指令数据后，prompt chatgpt为每条指令分配复杂度分数，得到（指令-复杂分数）数据对后训练Llama-7B。复杂度演进方法在sota数据集和普通的数据集上都有更好的表现。<strong>Llama3.1使用复杂度演进的度量方法进行指令复杂度的评估。</strong></li>
+<li>质量维度上，DEITA比较了response长度和GPT直接打分两种度量方法的效果，同时类似复杂度，也提出基于质量演进数据的度量方法，具体地，通过prompt chatgpt从增强帮助性、增强相关性、增加深度、提高创造性和提供细节的角度进行演进，后续流程同前段复杂度维度。</li>
+<li>多样性维度上，DEITA提出Repr Filter方法，利用样本间向量表示的余弦相似度作为控制指令集多样性的代理指标。具体地，目标为从指令集总体中采样出具多样性的样本集，判断是否采样样本时，比较样本与其在已采样样本集中余弦距离最近的样本的余弦相似度，如果相似度低于阈值则采样，否则丢弃。<strong>Llama3.1使用类似Repr Filter的方法进行语义去重</strong>，略有不同的是Llama3.1使用RoBERTa得到句子表示。</li>
+</ul>
+<p>最后，结合复杂度演进、质量演进及Repr Filter方法，提出分数优先-多样性感知的数据选取的方法——DEITA。DEITA方法使用复杂度分数乘以质量分数得到评价分数，将数据集按评价分数倒排后，进行Repr Filter的选取策略，得到兼具复杂度、质量和多样性的样本集。</p>
+<h3 id="125-其他">1.2.5. 其他</h3>
+<p><strong>减少幻觉</strong> Yi通过去除response中不包含在模型中的知识来减少幻觉。</p>
+<p><strong>ChatML</strong>是一种将结构化数据组织为非结构化数据的数据组织方式。GPT模型接受非结构化的字符串输入，而chat模型需要接受包含对话对象和对话内容的结构化的输入。YI和Qwen使用了chatml的数据格式。</p>
+<pre><code>&lt;|im_start|&gt;system
+You are ChatGPT, a large language model trained by OpenAI. Answer as concisely as possible.
+Knowledge cutoff: 2021-09-01
+Current date: 2023-03-01&lt;|im_end|&gt;
+&lt;|im_start|&gt;user
+How are you&lt;|im_end|&gt;
+&lt;|im_start|&gt;assistant
+I am doing well!&lt;|im_end|&gt;
+&lt;|im_start|&gt;user
+How are you now?&lt;|im_end|&gt;
+</code></pre>
+<h1 id="2-参考">2. 参考</h1>
+<ol>
+<li><a href="https://arxiv.org/abs/2403.04652">Yi: Open Foundation Models by 01.AI</a></li>
+<li><a href="https://arxiv.org/abs/2309.10305">Baichuan 2: Open Large-scale Language Models</a></li>
+<li><a href="https://arxiv.org/abs/2405.04434">DeepSeek-V2: A Strong, Economical, and Efficient Mixture-of-Experts Language Model</a></li>
+<li><a href="https://arxiv.org/abs/2308.07074">#InsTag: Instruction Tagging for Analyzing Supervised Fine-tuning of Large Language Models</a></li>
+<li><a href="https://arxiv.org/abs/2305.11206">LIMA: Less Is More for Alignment</a></li>
+<li><a href="https://arxiv.org/abs/2307.09288">Llama 2: Open Foundation and Fine-Tuned Chat Models</a></li>
+<li><a href="https://arxiv.org/abs/2406.11704">Nemotron-4 340B Technical Report</a></li>
+<li><a href="https://arxiv.org/abs/2407.10671">Qwen2 Technical Report</a></li>
+<li><a href="https://arxiv.org/abs/2310.06117">Take a Step Back: Evoking Reasoning via Abstraction in Large Language Models</a></li>
+<li><a href="https://ai.meta.com/research/publications/the-llama-3-herd-of-models/">The Llama 3 Herd of Models</a></li>
+<li><a href="https://arxiv.org/abs/2304.12244">WizardLM: Empowering Large Language Models to Follow Complex Instructions</a></li>
+<li><a href="https://arxiv.org/abs/2312.15685">What Makes Good Data for Alignment? A Comprehensive Study of Automatic Data Selection in Instruction Tuning</a></li>
+<li><a href="https://arxiv.org/abs/2310.05492">How Abilities in Large Language Models are Affected by Supervised Fine-tuning Data Composition</a></li>
+<li><a href="https://huggingface.co/datasets/nvidia/HelpSteer2">https://huggingface.co/datasets/nvidia/HelpSteer2</a></li>
+<li><a href="https://arxiv.org/abs/2406.08673">HelpSteer2: Open-source dataset for training top-performing reward models</a></li>
+</ol>
+
+            </div>
+            
+            
+
+            
+
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <script src="https://unpkg.com/aos@next/dist/aos.js"></script>
+<script type="application/javascript">
+
+AOS.init();
+
+var app = new Vue({
+  el: '#app',
+  data: {
+    menuVisible: false,
+  },
+})
+
+</script>
+
+
+
+
+
+
+  </body>
+</html>
